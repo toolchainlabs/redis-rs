@@ -11,6 +11,8 @@ pub struct Pipeline {
     commands: Vec<Cmd>,
     transaction_mode: bool,
     ignored_commands: HashSet<usize>,
+    // TOOLCHAIN CHANGE: Pre-packed pipeline. If this is set, then other fields will be ignored.
+    packed_pipeline: Option<Vec<u8>>,
 }
 
 /// A pipeline allows you to send multiple commands in one go to the
@@ -47,6 +49,18 @@ impl Pipeline {
             commands: Vec::with_capacity(capacity),
             transaction_mode: false,
             ignored_commands: HashSet::new(),
+            packed_pipeline: None,
+        }
+    }
+
+    /// Creates a pipeline with pre-packed data.
+    /// This is a Toolchain-specific addition.
+    pub fn with_packed_data(packed_pipeline: Vec<u8>) -> Pipeline {
+        Pipeline {
+            commands: vec![],
+            transaction_mode: false,
+            ignored_commands: HashSet::new(),
+            packed_pipeline: Some(packed_pipeline),
         }
     }
 
@@ -76,7 +90,15 @@ impl Pipeline {
 
     #[cfg(feature = "aio")]
     pub(crate) fn write_packed_pipeline(&self, out: &mut Vec<u8>) {
-        write_pipeline(out, &self.commands, self.transaction_mode)
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
+        match &self.packed_pipeline {
+            Some(p) => {
+                use std::io::Write;
+                out.reserve(p.len());
+                out.write_all(&*p).expect("write pipeline");
+            }
+            None => write_pipeline(out, &self.commands, self.transaction_mode),
+        }
     }
 
     fn execute_pipelined(&self, con: &mut dyn ConnectionLike) -> RedisResult<Value> {

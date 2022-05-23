@@ -27,6 +27,8 @@ pub struct Cmd {
     // Arg::Simple contains the offset that marks the end of the argument
     args: Vec<Arg<usize>>,
     cursor: Option<u64>,
+    // TOOLCHAIN CHANGE: Bool to reinterpret `data` as pre-packed command.
+    is_packed: bool,
 }
 
 /// Represents a redis iterator.
@@ -281,6 +283,18 @@ impl Cmd {
             data: vec![],
             args: vec![],
             cursor: None,
+            is_packed: false,
+        }
+    }
+
+    /// Create a command with pre-packed data.
+    /// This is a Toolchain-specific addition.
+    pub fn with_packed_data(packed_data: Vec<u8>) -> Cmd {
+        Cmd {
+            data: packed_data,
+            args: vec![],
+            cursor: None,
+            is_packed: true,
         }
     }
 
@@ -329,13 +343,25 @@ impl Cmd {
     /// Returns the packed command as a byte vector.
     #[inline]
     pub fn get_packed_command(&self) -> Vec<u8> {
-        let mut cmd = Vec::new();
-        self.write_packed_command(&mut cmd);
-        cmd
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
+        if self.is_packed {
+            self.data.clone()
+        } else {
+            let mut cmd = Vec::new();
+            self.write_packed_command(&mut cmd);
+            cmd
+        }
     }
 
     pub(crate) fn write_packed_command(&self, cmd: &mut Vec<u8>) {
-        write_command_to_vec(cmd, self.args_iter(), self.cursor.unwrap_or(0))
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
+        if self.is_packed {
+            use std::io::Write;
+            cmd.reserve(self.data.len());
+            cmd.write_all(&*self.data).expect("write cmd");
+        } else {
+            write_command_to_vec(cmd, self.args_iter(), self.cursor.unwrap_or(0))
+        }
     }
 
     pub(crate) fn write_packed_command_preallocated(&self, cmd: &mut Vec<u8>) {
