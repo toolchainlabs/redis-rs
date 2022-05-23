@@ -27,6 +27,7 @@ pub struct Cmd {
     // Arg::Simple contains the offset that marks the end of the argument
     args: Vec<Arg<usize>>,
     cursor: Option<u64>,
+    // TOOLCHAIN CHANGE: Bool to reinterpret `data` as pre-packed command.
     is_packed: bool,
 }
 
@@ -342,6 +343,7 @@ impl Cmd {
     /// Returns the packed command as a byte vector.
     #[inline]
     pub fn get_packed_command(&self) -> Vec<u8> {
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
         if self.is_packed {
             self.data.clone()
         } else {
@@ -352,6 +354,7 @@ impl Cmd {
     }
 
     pub(crate) fn write_packed_command(&self, cmd: &mut Vec<u8>) {
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
         if self.is_packed {
             use std::io::Write;
             cmd.reserve(self.data.len());

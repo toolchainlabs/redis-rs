@@ -11,6 +11,7 @@ pub struct Pipeline {
     commands: Vec<Cmd>,
     transaction_mode: bool,
     ignored_commands: HashSet<usize>,
+    // TOOLCHAIN CHANGE: Pre-packed pipeline. If this is set, then other fields will be ignored.
     packed_pipeline: Option<Vec<u8>>,
 }
 
@@ -53,6 +54,7 @@ impl Pipeline {
     }
 
     /// Creates a pipeline with pre-packed data.
+    /// This is a Toolchain-specific addition.
     pub fn with_packed_data(packed_pipeline: Vec<u8>) -> Pipeline {
         Pipeline {
             commands: vec![],
@@ -88,6 +90,7 @@ impl Pipeline {
 
     #[cfg(feature = "aio")]
     pub(crate) fn write_packed_pipeline(&self, out: &mut Vec<u8>) {
+        // TOOLCHAIN CHANGE: Handle pre-packed pipeline.
         match &self.packed_pipeline {
             Some(p) => {
                 use std::io::Write;
