@@ -598,6 +598,25 @@ where
     }
 }
 
+impl<C: ConnectionLike> ConnectionLike for Box<C> {
+    fn req_packed_command<'a>(&'a mut self, cmd: &'a Cmd) -> RedisFuture<'a, Value> {
+        (**self).req_packed_command(cmd)
+    }
+
+    fn req_packed_commands<'a>(
+        &'a mut self,
+        cmd: &'a crate::Pipeline,
+        offset: usize,
+        count: usize,
+    ) -> RedisFuture<'a, Vec<Value>> {
+        (**self).req_packed_commands(cmd, offset, count)
+    }
+
+    fn get_db(&self) -> i64 {
+        (**self).get_db()
+    }
+}
+
 // Senders which the result of a single request are sent through
 type PipelineOutput<O, E> = oneshot::Sender<Result<Vec<O>, E>>;
 
